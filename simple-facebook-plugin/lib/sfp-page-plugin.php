@@ -77,6 +77,9 @@ class SFPPagePluginWidget extends WP_Widget {
 		$instance['messages']		= isset( $new_instance['messages'] );
 		
 		$instance['locale']			= strip_tags( $new_instance['locale'] );
+		$instance['placeholder_text'] = sanitize_text_field( $new_instance['placeholder_text'] );
+		$instance['placeholder_bg_color'] = sanitize_hex_color( $new_instance['placeholder_bg_color'] );
+		$instance['placeholder_text_color'] = sanitize_hex_color( $new_instance['placeholder_text_color'] );
 	
 		// Add-ons hook
 		apply_filters( 'sfp_page_plugin_widget_update', $instance, $new_instance, $old_instance );
@@ -91,21 +94,8 @@ class SFPPagePluginWidget extends WP_Widget {
 
 		global $sfplugin;
 		
-		$default = array(
-			// default options
-			'title' 		=> 'Our Facebook Page',
-			'url'			=> 'http://www.facebook.com/topdevs.net',
-			'width'			=> '',
-			'height'		=> '',
-			'hide_cover'	=> false,
-			'show_facepile'	=> true,
-			'small_header'	=> false,
-			'timeline'		=> false,
-			'events'		=> false,
-			'messages'		=> false,
-			
-			'locale'		=> 'en_US'
-		);
+		$default = sfp_get_page_plugin_defaults();
+		$default['title'] = 'Our Facebook Page';
 
 		// Add-ons hook
 		//$instance = apply_filters( 'sfp_page_plugin_form', $instance, $default, $this, $sfplugin );
@@ -193,6 +183,18 @@ class SFPPagePluginWidget extends WP_Widget {
 			<?php endforeach; ?>
 			</select>
 		</p>
+		<p>
+			<label for="<?php echo $this->get_field_id('placeholder_text'); ?>"><?php _e('Placeholder Text'); ?></label>
+			<input class="widefat" id="<?php echo $this->get_field_id('placeholder_text'); ?>" name="<?php echo $this->get_field_name('placeholder_text'); ?>" type="text" value="<?php echo esc_attr( $placeholder_text ); ?>" />
+		</p>
+		<p>
+			<label for="<?php echo $this->get_field_id('placeholder_bg_color'); ?>"><?php _e('Placeholder Background Color'); ?></label>
+			<input class="sfp-color-field" id="<?php echo $this->get_field_id('placeholder_bg_color'); ?>" name="<?php echo $this->get_field_name('placeholder_bg_color'); ?>" type="text" value="<?php echo esc_attr( $placeholder_bg_color ); ?>" data-default-color="#e7f3ff" />
+		</p>
+		<p>
+			<label for="<?php echo $this->get_field_id('placeholder_text_color'); ?>"><?php _e('Placeholder Text Color'); ?></label>
+			<input class="sfp-color-field" id="<?php echo $this->get_field_id('placeholder_text_color'); ?>" name="<?php echo $this->get_field_name('placeholder_text_color'); ?>" type="text" value="<?php echo esc_attr( $placeholder_text_color ); ?>" data-default-color="#1877f2" />
+		</p>
 		<?php 
 			do_action( "sfp_page_plugin_widget_form_end", $instance, $this, $sfplugin );
 		?>
@@ -200,6 +202,64 @@ class SFPPagePluginWidget extends WP_Widget {
 	<?php }
 	
 } // class SFPPagePluginWidget
+
+/**
+ * Default Page Plugin settings.
+ *
+ * @since SF Plugin 2.0
+ */
+function sfp_get_page_plugin_defaults() {
+
+	global $sfplugin;
+
+	if ( ! $sfplugin || ! method_exists( $sfplugin, 'getPluginOptions' ) ) {
+		return array();
+	}
+
+	$defaults = $sfplugin->getPluginOptions();
+
+	return array(
+		'url'			=> $defaults['url'],
+		'width'			=> '',
+		'height'		=> '',
+		'hide_cover'	=> false,
+		'show_facepile'	=> true,
+		'small_header'	=> false,
+		'timeline'		=> false,
+		'events'		=> false,
+		'messages'		=> false,
+		'locale'		=> $defaults['locale'],
+		'click_to_load'	=> $defaults['click_to_load'],
+		'lazy_load'		=> $defaults['lazy_load'],
+		'placeholder_text' => $defaults['placeholder_text'],
+		'placeholder_bg_color' => $defaults['placeholder_bg_color'],
+		'placeholder_text_color' => $defaults['placeholder_text_color']
+	);
+}
+
+/**
+ * Render Page Plugin markup.
+ *
+ * @since SF Plugin 2.0
+ */
+function sfp_render_page_plugin_html( $instance ) {
+
+	global $sfplugin;
+
+	$instance = ( !$instance ) ? array() : $instance;
+
+	// Add-ons hook
+	$instance = apply_filters( "sfp_before_page_plugin", $instance, $sfplugin );
+
+	extract( array_merge( sfp_get_page_plugin_defaults(), $instance ) );
+
+	ob_start();
+
+	// include Page Plugin view
+	include( $sfplugin->pluginPath . 'views/view-page-plugin.php' );
+
+	return ob_get_clean();
+}
 
 /**
  * Add Page Plugin 'Shortcode'
@@ -210,33 +270,7 @@ class SFPPagePluginWidget extends WP_Widget {
 
 function sfp_page_plugin_shortcode ( $instance ) {
 
-	global $sfplugin;
-
-	$instance = ( !$instance ) ? array() : $instance;
-
-	// Add-ons hook
-	$instance = apply_filters( "sfp_before_page_plugin", $instance, $sfplugin );
-
-	extract( array_merge( array(
-		// default options
-		'url'			=> 'http://www.facebook.com/topdevs.net',
-		'width'			=> '',
-		'height'		=> '',
-		'hide_cover'	=> false,
-		'show_facepile'	=> true,
-		'small_header'	=> false,
-		'timeline'		=> false,
-		'events'		=> false,
-		'messages'		=> false,
-		'locale'		=> 'en_US'
-	), $instance ) );
-
-	ob_start();
-
-	// include Page Plugin view
-	include( $sfplugin->pluginPath . 'views/view-page-plugin.php' );
-
-	return ob_get_clean();
+	return sfp_render_page_plugin_html( $instance );
 }
 
 
@@ -249,27 +283,7 @@ function sfp_page_plugin_shortcode ( $instance ) {
 
 function sfp_page_plugin ( $instance = array() ) { 
 	
-	global $sfplugin;
-
-	// Add-ons hook
-	$instance = apply_filters( "sfp_before_page_plugin", $instance, $sfplugin );
-	
-	extract( array_merge( array(
-		// default options
-		'url'			=> 'http://www.facebook.com/topdevs.net',
-		'width'			=> '',
-		'height'		=> '',
-		'hide_cover'	=> false,
-		'show_facepile'	=> true,
-		'small_header'	=> false,
-		'timeline'		=> false,
-		'events'		=> false,
-		'messages'		=> false,
-		'locale'		=> 'en_US'
-	), $instance ) );
-	
-	// include Page Plugin view
-	include( $sfplugin->pluginPath . 'views/view-page-plugin.php' );
+	echo sfp_render_page_plugin_html( $instance );
 }
 
 ?>
